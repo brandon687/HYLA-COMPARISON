@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyla Stock Comparison Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .drop-zone {
+            border: 3px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.drag-over {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            transform: scale(1.02);
+        }
+
+        .drop-zone.has-file {
+            border-color: #10b981;
+            background-color: #f0fdf4;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .stat-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="text-center mb-12 fade-in">
+            <div class="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text mb-2">
+                <h1 class="text-6xl font-bold">HYLA Stock Comparison</h1>
+            </div>
+            <p class="text-xl text-slate-600 mb-4">Compare stock lists in seconds with drag-and-drop simplicity</p>
+            <div class="flex items-center justify-center gap-4 text-sm text-slate-500">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>Instant Analysis</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>Multiple Export Formats</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>Powered by Scal</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Upload Section -->
+        <div id="uploadSection" class="mb-12 fade-in">
+            <div class="grid md:grid-cols-2 gap-6 mb-8">
+                <!-- OLD File Drop Zone -->
+                <div class="drop-zone rounded-2xl p-8 text-center cursor-pointer bg-white shadow-lg"
+                     id="oldFileZone"
+                     onclick="document.getElementById('oldFileInput').click()">
+                    <svg class="mx-auto mb-4 text-slate-400" width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <h3 class="text-xl font-semibold text-slate-700 mb-2">OLD Stock List</h3>
+                    <p class="text-slate-500 mb-4" id="oldFileName">Drop your OLD file here or click to browse</p>
+                    <span class="text-sm text-slate-400">Excel files (.xlsx, .xls)</span>
+                    <input type="file" id="oldFileInput" accept=".xlsx,.xls" class="hidden">
+                </div>
+
+                <!-- NEW File Drop Zone -->
+                <div class="drop-zone rounded-2xl p-8 text-center cursor-pointer bg-white shadow-lg"
+                     id="newFileZone"
+                     onclick="document.getElementById('newFileInput').click()">
+                    <svg class="mx-auto mb-4 text-slate-400" width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <h3 class="text-xl font-semibold text-slate-700 mb-2">NEW Stock List</h3>
+                    <p class="text-slate-500 mb-4" id="newFileName">Drop your NEW file here or click to browse</p>
+                    <span class="text-sm text-slate-400">Excel files (.xlsx, .xls)</span>
+                    <input type="file" id="newFileInput" accept=".xlsx,.xls" class="hidden">
+                </div>
+            </div>
+
+            <!-- Compare Button -->
+            <div class="text-center">
+                <button id="compareBtn"
+                        class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-12 py-4 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                        disabled
+                        onclick="compareFiles()">
+                    <span id="btnText">Compare Stock Lists</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Section -->
+        <div id="loadingSection" class="hidden text-center py-12 fade-in">
+            <div class="max-w-md mx-auto bg-white rounded-2xl p-8 shadow-lg">
+                <div class="spinner mx-auto mb-6"></div>
+                <h3 class="text-2xl font-semibold text-slate-700 mb-2">Analyzing Stock Lists...</h3>
+                <p class="text-slate-500">Please wait while we process your files</p>
+            </div>
+        </div>
+
+        <!-- Error Section -->
+        <div id="errorSection" class="hidden mb-8 fade-in">
+            <div class="bg-red-50 border-2 border-red-200 rounded-xl p-6 text-center">
+                <svg class="mx-auto mb-3 text-red-500" width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <h3 class="text-xl font-semibold text-red-700 mb-2">Error</h3>
+                <p id="errorMessage" class="text-red-600"></p>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="hidden fade-in">
+            <!-- Success Message -->
+            <div class="bg-green-50 border-2 border-green-200 rounded-2xl p-8 text-center mb-8">
+                <svg class="mx-auto mb-4 text-green-500" width="64" height="64" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+                <h3 class="text-2xl font-bold text-green-700 mb-2">Comparison Complete!</h3>
+                <p class="text-green-600">Your stock comparison has been processed successfully. Download your reports below.</p>
+            </div>
+
+            <!-- Download Buttons -->
+            <div class="bg-white rounded-2xl p-8 shadow-lg">
+                <h3 class="text-2xl font-bold text-slate-900 mb-6 text-center">Download Results</h3>
+                <div class="grid md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+                    <!-- 1. Text Report -->
+                    <a id="downloadText" href="#" class="block bg-gradient-to-r from-slate-600 to-slate-700 text-white px-6 py-4 rounded-xl text-center font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-300">
+                        <svg class="mx-auto mb-2" width="32" height="32" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                        Text Report
+                    </a>
+                    <!-- 2. Excel Workbook -->
+                    <a id="downloadExcel" href="#" class="block bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-4 rounded-xl text-center font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-300">
+                        <svg class="mx-auto mb-2" width="32" height="32" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                        Excel Workbook
+                    </a>
+                    <!-- 3. Top 20 Movers PDF -->
+                    <a id="downloadPdf" href="#" class="block bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-xl text-center font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-300">
+                        <svg class="mx-auto mb-2" width="32" height="32" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                        Top 20 Movers PDF
+                    </a>
+                    <!-- 4. Complete Package -->
+                    <a id="downloadZip" href="#" class="block bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-4 rounded-xl text-center font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-300">
+                        <svg class="mx-auto mb-2" width="32" height="32" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                        Complete Package
+                    </a>
+                </div>
+            </div>
+
+            <!-- New Comparison Button -->
+            <div class="text-center mt-8">
+                <button onclick="resetForm()" class="bg-slate-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-slate-700 transition-all duration-300">
+                    New Comparison
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let oldFile = null;
+        let newFile = null;
+
+        // Setup drag and drop for both zones
+        function setupDropZone(zoneId, inputId, fileType) {
+            const zone = document.getElementById(zoneId);
+            const input = document.getElementById(inputId);
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                zone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                zone.addEventListener(eventName, () => {
+                    zone.classList.add('drag-over');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                zone.addEventListener(eventName, () => {
+                    zone.classList.remove('drag-over');
+                }, false);
+            });
+
+            zone.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFile(files[0], fileType, zoneId, inputId);
+                }
+            }, false);
+
+            input.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0], fileType, zoneId, inputId);
+                }
+            });
+        }
+
+        function handleFile(file, fileType, zoneId, inputId) {
+            const zone = document.getElementById(zoneId);
+            const fileNameEl = document.getElementById(fileType === 'old' ? 'oldFileName' : 'newFileName');
+
+            if (!file.name.match(/\.(xlsx|xls)$/i)) {
+                alert('Please upload an Excel file (.xlsx or .xls)');
+                return;
+            }
+
+            if (fileType === 'old') {
+                oldFile = file;
+            } else {
+                newFile = file;
+            }
+
+            zone.classList.add('has-file');
+            fileNameEl.innerHTML = `<strong>${file.name}</strong><br><span class="text-xs">${(file.size / 1024 / 1024).toFixed(2)} MB</span>`;
+
+            checkFilesReady();
+        }
+
+        function checkFilesReady() {
+            const btn = document.getElementById('compareBtn');
+            if (oldFile && newFile) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        async function compareFiles() {
+            const btn = document.getElementById('compareBtn');
+            const uploadSection = document.getElementById('uploadSection');
+            const loadingSection = document.getElementById('loadingSection');
+            const resultsSection = document.getElementById('resultsSection');
+            const errorSection = document.getElementById('errorSection');
+
+            // Show loading
+            uploadSection.classList.add('hidden');
+            loadingSection.classList.remove('hidden');
+            errorSection.classList.add('hidden');
+            resultsSection.classList.add('hidden');
+
+            const formData = new FormData();
+            formData.append('old_file', oldFile);
+            formData.append('new_file', newFile);
+
+            try {
+                const response = await fetch('/api/compare', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Comparison failed');
+                }
+
+                // Hide loading, show results
+                loadingSection.classList.add('hidden');
+                resultsSection.classList.remove('hidden');
+
+                // Update download links
+                document.getElementById('downloadPdf').href = data.files.pdf;
+                document.getElementById('downloadExcel').href = data.files.excel;
+                document.getElementById('downloadText').href = data.files.text;
+                document.getElementById('downloadZip').href = data.files.zip;
+
+            } catch (error) {
+                loadingSection.classList.add('hidden');
+                errorSection.classList.remove('hidden');
+                document.getElementById('errorMessage').textContent = error.message;
+                uploadSection.classList.remove('hidden');
+            }
+        }
+
+        function resetForm() {
+            oldFile = null;
+            newFile = null;
+
+            document.getElementById('oldFileZone').classList.remove('has-file');
+            document.getElementById('newFileZone').classList.remove('has-file');
+            document.getElementById('oldFileName').textContent = 'Drop your OLD file here or click to browse';
+            document.getElementById('newFileName').textContent = 'Drop your NEW file here or click to browse';
+            document.getElementById('oldFileInput').value = '';
+            document.getElementById('newFileInput').value = '';
+            document.getElementById('compareBtn').disabled = true;
+
+            document.getElementById('uploadSection').classList.remove('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('errorSection').classList.add('hidden');
+        }
+
+        // Initialize
+        setupDropZone('oldFileZone', 'oldFileInput', 'old');
+        setupDropZone('newFileZone', 'newFileInput', 'new');
+    </script>
+</body>
+</html>

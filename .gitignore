@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Output files from comparisons
+Comparison_*.xlsx
+Comparison_*.txt
+Comparison_*.html
+Comparison_*.zip
+Comparison_*.pdf
+Stock_Comparison_Report_*.txt
+Stock_Comparison_Report_*.html
+Stock_Comparison_Report_*.zip
+*_Dashboard.html
+*_Package.zip
+*_Top10.pdf
+
+# Sample/test input files
+**NEW**Stock_List*.xlsx
+**OLD**Stock_List*.xlsx
+Stock_List_*.xlsx
+
+# Temp files
+*.tmp
+tmp/
+temp/
+
+# Distribution packages
+HYLA_STOCK_TOOL_DISTRIBUTION/
+*.zip
+
+# Test outputs
+TEST_*.xlsx
+DEMO_*.xlsx
+FINAL_*.xlsx
+VALIDATED_*.xlsx
+Executive_*.xlsx

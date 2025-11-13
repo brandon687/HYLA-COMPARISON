@@ -12,6 +12,9 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 import pandas as pd
+import logging
+import sys
+import traceback
 from stock_comparison_tool import StockComparator
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib import colors
@@ -20,9 +23,26 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, KeepTogether
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
+# Configure comprehensive logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)  # Log to stdout (Railway captures this)
+    ]
+)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 app.config['UPLOAD_FOLDER'] = tempfile.mkdtemp()
+
+# Log startup information
+logger.info("=" * 80)
+logger.info("HYLA Stock Comparison Tool - Starting")
+logger.info(f"Upload folder: {app.config['UPLOAD_FOLDER']}")
+logger.info(f"Max file size: {app.config['MAX_CONTENT_LENGTH'] / (1024*1024)}MB")
+logger.info("=" * 80)
 
 ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
 
@@ -387,18 +407,26 @@ def index():
 @app.route('/api/compare', methods=['POST'])
 def compare_files():
     """Handle file upload and comparison."""
+    session_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+    logger.info(f"[{session_id}] Starting new comparison request")
+
     try:
         # Validate files
         if 'old_file' not in request.files or 'new_file' not in request.files:
+            logger.warning(f"[{session_id}] Missing file uploads in request")
             return jsonify({'error': 'Both OLD and NEW files are required'}), 400
 
         old_file = request.files['old_file']
         new_file = request.files['new_file']
 
+        logger.info(f"[{session_id}] Files received: OLD='{old_file.filename}', NEW='{new_file.filename}'")
+
         if old_file.filename == '' or new_file.filename == '':
+            logger.warning(f"[{session_id}] Empty filename detected")
             return jsonify({'error': 'No files selected'}), 400
 
         if not (allowed_file(old_file.filename) and allowed_file(new_file.filename)):
+            logger.warning(f"[{session_id}] Invalid file extensions")
             return jsonify({'error': 'Only Excel files (.xlsx, .xls) are allowed'}), 400
 
         # Save uploaded files
@@ -408,19 +436,28 @@ def compare_files():
         old_path = os.path.join(app.config['UPLOAD_FOLDER'], old_filename)
         new_path = os.path.join(app.config['UPLOAD_FOLDER'], new_filename)
 
+        logger.info(f"[{session_id}] Saving files to: {app.config['UPLOAD_FOLDER']}")
         old_file.save(old_path)
         new_file.save(new_path)
 
+        old_size = os.path.getsize(old_path) / (1024*1024)  # MB
+        new_size = os.path.getsize(new_path) / (1024*1024)  # MB
+        logger.info(f"[{session_id}] File sizes: OLD={old_size:.2f}MB, NEW={new_size:.2f}MB")
+
         # Generate output filename with timestamp
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = session_id
         output_file = os.path.join(app.config['UPLOAD_FOLDER'], f'Comparison_{timestamp}.txt')
 
         # Run comparison
+        logger.info(f"[{session_id}] Starting StockComparator")
         comparator = StockComparator(old_path, new_path, output_file)
         success = comparator.run()
 
         if not success:
+            logger.error(f"[{session_id}] Comparison failed")
             return jsonify({'error': 'Comparison failed. Please check your files.'}), 500
+
+        logger.info(f"[{session_id}] Comparison completed successfully")
 
         # Generate summary statistics first (needed for PDF)
         matching = comparator.df_comparison[comparator.df_comparison['Status'] == 'Matching']
@@ -437,18 +474,25 @@ def compare_files():
             'timestamp': timestamp
         }
 
+        logger.info(f"[{session_id}] Summary stats: {summary['total_configs_old']} old configs, {summary['total_configs_new']} new configs, {summary['significant_changes']} significant changes")
+
         # Generate Top 20 Movers PDF
+        logger.info(f"[{session_id}] Generating Top 20 Movers PDF")
         pdf_file = comparator.text_file.replace('.txt', '_Top10.pdf')
         generate_top10_pdf(comparator, pdf_file, summary)
+        logger.info(f"[{session_id}] PDF generated: {os.path.basename(pdf_file)}")
 
         # Read text report content for inline display
         text_content = ""
         if os.path.exists(comparator.text_file):
             with open(comparator.text_file, 'r', encoding='utf-8') as f:
                 text_content = f.read()
+            logger.info(f"[{session_id}] Text report loaded: {len(text_content)} characters")
 
         # Store result paths in session/temp
         session_id = timestamp
+
+        logger.info(f"[{session_id}] Comparison request completed successfully")
 
         return jsonify({
             'success': True,
@@ -465,17 +509,23 @@ def compare_files():
         })
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        error_traceback = traceback.format_exc()
+        logger.error(f"[{session_id}] ERROR during comparison:")
+        logger.error(f"[{session_id}] Exception type: {type(e).__name__}")
+        logger.error(f"[{session_id}] Exception message: {str(e)}")
+        logger.error(f"[{session_id}] Full traceback:\n{error_traceback}")
         return jsonify({'error': f'Error processing files: {str(e)}'}), 500
 
 
 @app.route('/api/download/<session_id>/<file_type>')
 def download_file(session_id, file_type):
     """Download result files."""
+    logger.info(f"[{session_id}] Download requested: {file_type}")
+
     try:
         # Find files with matching session_id (timestamp)
         files = list(Path(app.config['UPLOAD_FOLDER']).glob(f'*{session_id}*'))
+        logger.info(f"[{session_id}] Found {len(files)} files for session")
 
         if file_type == 'pdf':
             file_path = next((f for f in files if f.suffix == '.pdf'), None)
@@ -488,10 +538,14 @@ def download_file(session_id, file_type):
         elif file_type == 'text':
             file_path = next((f for f in files if f.suffix == '.txt'), None)
         else:
+            logger.warning(f"[{session_id}] Invalid file type requested: {file_type}")
             return jsonify({'error': 'Invalid file type'}), 400
 
         if not file_path or not file_path.exists():
+            logger.error(f"[{session_id}] File not found for type: {file_type}")
             return jsonify({'error': 'File not found'}), 404
+
+        logger.info(f"[{session_id}] Serving file: {file_path.name} ({os.path.getsize(file_path) / 1024:.2f}KB)")
 
         # CRITICAL: Force download by using octet-stream and proper headers
         download_name = file_path.name
@@ -510,9 +564,12 @@ def download_file(session_id, file_type):
         response.headers['Expires'] = '0'
         response.headers['X-Content-Type-Options'] = 'nosniff'
 
+        logger.info(f"[{session_id}] Download completed: {file_type}")
         return response
 
     except Exception as e:
+        logger.error(f"[{session_id}] Error during download: {str(e)}")
+        logger.error(f"[{session_id}] Traceback:\n{traceback.format_exc()}")
         return jsonify({'error': f'Error downloading file: {str(e)}'}), 500
 
 

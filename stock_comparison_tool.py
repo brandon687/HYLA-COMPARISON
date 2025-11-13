@@ -755,12 +755,12 @@ class StockComparator:
         # Generate executive dashboard
         html_file = self._generate_executive_dashboard(top_insights)
 
-        # Create zip package
+        # Create zip package (excluding HTML dashboard)
         zip_file = self.text_file.replace('.txt', '_Package.zip')
         with zipfile.ZipFile(zip_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
             zipf.write(self.text_file, os.path.basename(self.text_file))
             zipf.write(excel_file, os.path.basename(excel_file))
-            zipf.write(html_file, os.path.basename(html_file))
+            # HTML dashboard excluded from package
 
         print(f"✓ Package created: {zip_file}")
 

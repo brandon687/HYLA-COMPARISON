@@ -437,9 +437,15 @@ def compare_files():
             'timestamp': timestamp
         }
 
-        # Generate Top 10 Movers PDF
+        # Generate Top 20 Movers PDF
         pdf_file = comparator.text_file.replace('.txt', '_Top10.pdf')
         generate_top10_pdf(comparator, pdf_file, summary)
+
+        # Read text report content for inline display
+        text_content = ""
+        if os.path.exists(comparator.text_file):
+            with open(comparator.text_file, 'r', encoding='utf-8') as f:
+                text_content = f.read()
 
         # Store result paths in session/temp
         session_id = timestamp
@@ -448,6 +454,7 @@ def compare_files():
             'success': True,
             'summary': summary,
             'session_id': session_id,
+            'text_content': text_content,  # Include text content for inline display
             'files': {
                 'pdf': f'/api/download/{session_id}/pdf',
                 'excel': f'/api/download/{session_id}/excel',

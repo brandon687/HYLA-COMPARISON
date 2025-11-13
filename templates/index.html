@@ -198,6 +198,14 @@
                 </div>
             </div>
 
+            <!-- Inline Text Report Display -->
+            <div class="bg-white rounded-2xl p-8 shadow-lg mt-8">
+                <h3 class="text-2xl font-bold text-slate-900 mb-6">Text Report</h3>
+                <div id="textReportContent" class="bg-slate-50 rounded-xl p-6 border border-slate-200">
+                    <pre class="text-base font-mono whitespace-pre-wrap overflow-x-auto" style="font-family: 'Courier New', monospace; line-height: 1.8; color: #000000; font-weight: 700;"></pre>
+                </div>
+            </div>
+
             <!-- New Comparison Button -->
             <div class="text-center mt-8">
                 <button onclick="resetForm()" class="bg-slate-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-slate-700 transition-all duration-300">
@@ -210,6 +218,24 @@
     <script>
         let oldFile = null;
         let newFile = null;
+
+        // Function to colorize percentages in text content
+        function colorizePercentages(text) {
+            // Escape HTML special characters first
+            text = text.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;');
+
+            // Colorize percentages: (+X.X%) in green, (-X.X%) in red
+            text = text.replace(/\((\+[\d.]+%)\)/g, '<span style="color: #059669; font-weight: bold;">($1)</span>');
+            text = text.replace(/\((-[\d.]+%)\)/g, '<span style="color: #dc2626; font-weight: bold;">($1)</span>');
+
+            // Also colorize standalone percentages with signs
+            text = text.replace(/(\+[\d.]+%)/g, '<span style="color: #059669; font-weight: bold;">$1</span>');
+            text = text.replace(/(-[\d.]+%)/g, '<span style="color: #dc2626; font-weight: bold;">$1</span>');
+
+            return text;
+        }
 
         // Setup drag and drop for both zones
         function setupDropZone(zoneId, inputId, fileType) {
@@ -318,6 +344,12 @@
                 document.getElementById('downloadExcel').href = data.files.excel;
                 document.getElementById('downloadText').href = data.files.text;
                 document.getElementById('downloadZip').href = data.files.zip;
+
+                // Display text report content inline with colored percentages
+                if (data.text_content) {
+                    const textReportPre = document.querySelector('#textReportContent pre');
+                    textReportPre.innerHTML = colorizePercentages(data.text_content);
+                }
 
             } catch (error) {
                 loadingSection.classList.add('hidden');

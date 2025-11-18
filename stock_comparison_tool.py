@@ -47,6 +47,8 @@ class StockComparator:
             parts.append(str(row['Model']))
         if pd.notna(row['Capacity']) and row['Capacity']:
             parts.append(str(row['Capacity']))
+        if pd.notna(row['Color']) and row['Color']:
+            parts.append(str(row['Color']))
         if pd.notna(row['Lock Status']) and row['Lock Status']:
             parts.append(f"({row['Lock Status']})")
         if pd.notna(row['Grade']) and row['Grade']:
@@ -104,7 +106,7 @@ class StockComparator:
         print("\nCleaning data...")
 
         # Validate required columns
-        required_cols = ['Item #', 'Model', 'Capacity', 'Lock Status', 'Grade',
+        required_cols = ['Item #', 'Model', 'Capacity', 'Color', 'Lock Status', 'Grade',
                         'Available Quantity', 'List Price']
 
         for col in required_cols:
@@ -139,31 +141,60 @@ class StockComparator:
         print(f"✓ Data cleaned and ready for grouping")
 
     def group_by_configuration(self):
-        """Group items by configuration (Model + Capacity + Lock Status + Grade)."""
+        """Group items by configuration (Model + Capacity + Color + Lock Status + Grade)."""
         print("\nGrouping by configuration...")
 
-        grouping_cols = ['Model', 'Capacity', 'Lock Status', 'Grade']
+        grouping_cols = ['Model', 'Capacity', 'Color', 'Lock Status', 'Grade']
 
-        # Group OLD
+        # Calculate weighted averages for OLD file
+        # Weighted average = sum(price * qty) / sum(qty)
+        self.df_old['Weighted_List_Price'] = self.df_old['List Price'] * self.df_old['Available Quantity']
+        self.df_old['Weighted_Offer_Price'] = self.df_old['New Offer Price'] * self.df_old['Available Quantity']
+
         self.df_old_grouped = self.df_old.groupby(grouping_cols).agg({
             'Item #': 'count',
             'Available Quantity': 'sum',
-            'List Price': 'mean',
-            'New Offer Price': 'mean'
+            'Weighted_List_Price': 'sum',
+            'Weighted_Offer_Price': 'sum'
         }).reset_index()
 
-        self.df_old_grouped.columns = ['Model', 'Capacity', 'Lock Status', 'Grade',
-                                        'OLD Item Count', 'OLD Qty', 'OLD List Price', 'OLD Offer Price']
+        # Calculate weighted averages
+        self.df_old_grouped['OLD List Price'] = (
+            self.df_old_grouped['Weighted_List_Price'] / self.df_old_grouped['Available Quantity']
+        )
+        self.df_old_grouped['OLD Offer Price'] = (
+            self.df_old_grouped['Weighted_Offer_Price'] / self.df_old_grouped['Available Quantity']
+        )
 
-        # Group NEW
+        # Rename and select final columns
+        self.df_old_grouped = self.df_old_grouped.rename(columns={
+            'Item #': 'OLD Item Count',
+            'Available Quantity': 'OLD Qty'
+        })
+        self.df_old_grouped = self.df_old_grouped[['Model', 'Capacity', 'Color', 'Lock Status', 'Grade',
+                                                     'OLD Item Count', 'OLD Qty', 'OLD List Price', 'OLD Offer Price']]
+
+        # Calculate weighted averages for NEW file
+        self.df_new['Weighted_List_Price'] = self.df_new['List Price'] * self.df_new['Available Quantity']
+
         self.df_new_grouped = self.df_new.groupby(grouping_cols).agg({
             'Item #': 'count',
             'Available Quantity': 'sum',
-            'List Price': 'mean'
+            'Weighted_List_Price': 'sum'
         }).reset_index()
 
-        self.df_new_grouped.columns = ['Model', 'Capacity', 'Lock Status', 'Grade',
-                                        'NEW Item Count', 'NEW Qty', 'NEW List Price']
+        # Calculate weighted average
+        self.df_new_grouped['NEW List Price'] = (
+            self.df_new_grouped['Weighted_List_Price'] / self.df_new_grouped['Available Quantity']
+        )
+
+        # Rename and select final columns
+        self.df_new_grouped = self.df_new_grouped.rename(columns={
+            'Item #': 'NEW Item Count',
+            'Available Quantity': 'NEW Qty'
+        })
+        self.df_new_grouped = self.df_new_grouped[['Model', 'Capacity', 'Color', 'Lock Status', 'Grade',
+                                                     'NEW Item Count', 'NEW Qty', 'NEW List Price']]
 
         print(f"✓ OLD configurations: {len(self.df_old_grouped)}")
         print(f"✓ NEW configurations: {len(self.df_new_grouped)}")
@@ -176,7 +207,7 @@ class StockComparator:
         self.df_comparison = pd.merge(
             self.df_old_grouped,
             self.df_new_grouped,
-            on=['Model', 'Capacity', 'Lock Status', 'Grade'],
+            on=['Model', 'Capacity', 'Color', 'Lock Status', 'Grade'],
             how='outer',
             indicator=True
         )
@@ -217,7 +248,7 @@ class StockComparator:
         )
 
         # Reorder columns
-        col_order = ['Model', 'Capacity', 'Lock Status', 'Grade', 'Status',
+        col_order = ['Model', 'Capacity', 'Color', 'Lock Status', 'Grade', 'Status',
                     'OLD Item Count', 'OLD Qty', 'OLD List Price', 'OLD Offer Price',
                     'NEW Item Count', 'NEW Qty', 'NEW List Price',
                     'Qty Change', 'Qty Change %',
@@ -272,7 +303,7 @@ class StockComparator:
 
         for idx, row in top_insights['price_increases'].iterrows():
             price_increases.append({
-                'model': f"{row['Model']} {row['Capacity']} ({row['Lock Status']})",
+                'model': f"{row['Model']} {row['Capacity']} {row['Color']} ({row['Lock Status']})",
                 'grade': f"DLS {row['Grade']}" if pd.notna(row['Grade']) else "N/A",
                 'oldPrice': float(row['OLD List Price']),
                 'newPrice': float(row['NEW List Price']),
@@ -284,7 +315,7 @@ class StockComparator:
 
         for idx, row in top_insights['price_decreases'].iterrows():
             price_decreases.append({
-                'model': f"{row['Model']} {row['Capacity']} ({row['Lock Status']})",
+                'model': f"{row['Model']} {row['Capacity']} {row['Color']} ({row['Lock Status']})",
                 'grade': f"DLS {row['Grade']}" if pd.notna(row['Grade']) else "N/A",
                 'oldPrice': float(row['OLD List Price']),
                 'newPrice': float(row['NEW List Price']),
@@ -296,7 +327,7 @@ class StockComparator:
 
         for idx, row in top_insights['qty_increases'].iterrows():
             qty_increases.append({
-                'model': f"{row['Model']} {row['Capacity']} ({row['Lock Status']})",
+                'model': f"{row['Model']} {row['Capacity']} {row['Color']} ({row['Lock Status']})",
                 'grade': f"DLS {row['Grade']}" if pd.notna(row['Grade']) else "N/A",
                 'oldQty': int(row['OLD Qty']),
                 'newQty': int(row['NEW Qty']),
@@ -308,7 +339,7 @@ class StockComparator:
 
         for idx, row in top_insights['qty_decreases'].iterrows():
             qty_decreases.append({
-                'model': f"{row['Model']} {row['Capacity']} ({row['Lock Status']})",
+                'model': f"{row['Model']} {row['Capacity']} {row['Color']} ({row['Lock Status']})",
                 'grade': f"DLS {row['Grade']}" if pd.notna(row['Grade']) else "N/A",
                 'oldQty': int(row['OLD Qty']),
                 'newQty': int(row['NEW Qty']),
